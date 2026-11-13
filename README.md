@@ -21,7 +21,7 @@ N2A Lab studies when an LLM agent should call a tool, when it should answer dire
 
 ### Scientific boundary
 
-The original v0.1 synthetic sandbox remains available for teaching and UI testing only. It is not empirical evidence. The live benchmark audit verifies dataset ingestion and split integrity; it does not execute a language model. A GPU pilot is a runtime smoke test, not a paper reproduction. No claim that N2A outperforms existing methods is made at this stage.
+The original v0.1 synthetic sandbox remains available for teaching and UI testing only. It is not empirical evidence. The live benchmark audit verifies dataset ingestion and split integrity; it does not execute a language model. The current P0–P6 layer is an offline decision/evaluation workbench, not yet a live tool-call interception gateway. A GPU pilot is a runtime smoke test, not a paper reproduction. No claim that N2A outperforms existing methods is made at this stage.
 
 ## Run locally
 
@@ -134,7 +134,8 @@ The repeated-trial protocol retrains P5 against the same repeated-run label defi
 3. **v0.3:** protocol-matched When2Tool reproduction and independent result validation.
 4. **v0.4:** Knowing–Doing Gap experiments with separate belief, signal, action, and outcome measures.
 5. **v0.5:** cost-sensitive N2A policy evaluation with validation-only calibration and uncertainty analysis.
-6. **v1.0:** fully reproducible research lab with pinned artifacts, statistical reports, and publication-ready figures.
+6. **v0.6:** live agent policy gateway that applies P0–P6 decisions before tool execution.
+7. **v1.0:** fully reproducible research lab with pinned artifacts, statistical reports, and publication-ready figures.
 
 For development tests:
 

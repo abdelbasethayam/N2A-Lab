@@ -34,7 +34,7 @@ This exports the four upstream-compatible JSON files and a manifest containing s
 
 ## GPU pilot
 
-The official model pipeline uses vLLM and Transformers. Run it in a Linux NVIDIA cloud GPU runtime, not on a CPU-only Streamlit instance or a standard Mac environment.
+The official model pipeline uses vLLM and Transformers. Run it in a Linux x86_64 NVIDIA cloud GPU runtime with Python 3.11 and a compatible CUDA 12.4 environment, not on a CPU-only Streamlit instance or a standard Mac environment.
 
 \`\`\`bash
 pip install -r requirements-research.txt

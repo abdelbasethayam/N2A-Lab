@@ -64,7 +64,7 @@ The command exports the four official splits in upstream-compatible JSON format 
 
 ## Run a cloud GPU pilot
 
-Use a Linux NVIDIA GPU runtime. The pinned upstream runner uses vLLM and Transformers; a standard Mac or CPU-only Streamlit instance is not the target runtime.
+Use a Linux x86_64 NVIDIA GPU runtime with Python 3.11 and compatible CUDA 12.4. The pinned upstream runner uses vLLM and Transformers; a standard Mac or CPU-only Streamlit instance is not the target runtime.
 
 \`\`\`bash
 pip install -r requirements-research.txt

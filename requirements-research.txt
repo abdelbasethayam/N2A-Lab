@@ -1,0 +1,8 @@
+# Linux cloud GPU only; mirrors the pinned official When2Tool environment.
+-r requirements.txt
+torch==2.6.0
+transformers==4.55.2
+vllm==0.8.5
+accelerate==1.13.0
+scikit-learn>=1.5,<2.0
+matplotlib>=3.8,<4.0

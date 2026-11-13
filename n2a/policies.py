@@ -26,7 +26,7 @@ class DecisionContext:
     difficulty: str = "unknown"
     env_name: str = "unknown"
     no_tool_success_probability: Optional[float] = None
-    verbalized_necessity_probability: Optional[float] = None
+    verbalized_necessity_score: Optional[float] = None
     surface_necessity_score: Optional[float] = None
     probe_necessity_probability: Optional[float] = None
     tool_success_probability: Optional[float] = None

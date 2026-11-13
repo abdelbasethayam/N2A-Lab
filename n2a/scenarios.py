@@ -62,7 +62,7 @@ SCENARIOS = {
     "private-records": Scenario(
         scenario_id="private-records",
         title="Private record lookup",
-        question="Revenue was $8.0M in 2024 and $10.0M in 2025. What was year-over-year growth?",
+        question="Using the company's financial records, what was year-over-year revenue growth from 2024 to 2025?",
         reference_answer="25.0%",
         no_tool_answer="I cannot verify the figures without consulting the records.",
         tool_name="company_facts_lookup",
@@ -76,7 +76,7 @@ SCENARIOS = {
     "multi-step": Scenario(
         scenario_id="multi-step",
         title="Multi-step retrieval and calculation",
-        question="The dataset says 1,200 units were sold in Q1 and 1,500 in Q2. What was the percentage increase?",
+        question="Using the sales dataset, what was the percentage increase in units sold from Q1 to Q2?",
         reference_answer="25.0%",
         no_tool_answer="I do not have the dataset values available in the task context.",
         tool_name="sales_lookup_and_calculator",

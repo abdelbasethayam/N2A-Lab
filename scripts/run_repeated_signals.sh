@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODEL="qwen3-4b-instruct"
 SPLIT="test"
 RUNS=10
@@ -42,10 +42,10 @@ if ! python -c "import torch, transformers, vllm, datasets" >/dev/null 2>&1; the
   exit 4
 fi
 
-bash "\${ROOT_DIR}/scripts/bootstrap_when2tool.sh"
-UPSTREAM_DIR="\${ROOT_DIR}/.cache/when2tool"
-ARTIFACT_DIR="\${ROOT_DIR}/artifacts/when2tool/repeated"
-mkdir -p "\${ARTIFACT_DIR}"
+bash "${ROOT_DIR}/scripts/bootstrap_when2tool.sh"
+UPSTREAM_DIR="${ROOT_DIR}/.cache/when2tool"
+ARTIFACT_DIR="${ROOT_DIR}/artifacts/when2tool/repeated"
+mkdir -p "${ARTIFACT_DIR}"
 
 if [[ "$SPLIT" == "train" ]]; then
   DATA_PATH="./data/tasks_v1_train.json"
@@ -53,28 +53,28 @@ else
   DATA_PATH="./data/tasks_v1_test.json"
 fi
 
-NO_TOOL_OUT="\${ARTIFACT_DIR}/\${MODEL}_\${SPLIT}_hard_no_tool_\${RUNS}runs.json"
-FORCE_TOOL_OUT="\${ARTIFACT_DIR}/\${MODEL}_\${SPLIT}_force_tool_\${RUNS}runs.json"
+NO_TOOL_OUT="${ARTIFACT_DIR}/${MODEL}_${SPLIT}_hard_no_tool_${RUNS}runs.json"
+FORCE_TOOL_OUT="${ARTIFACT_DIR}/${MODEL}_${SPLIT}_force_tool_${RUNS}runs.json"
 
-python "\${ROOT_DIR}/scripts/run_repeated_no_tool.py" \
-  --upstream-dir "\${UPSTREAM_DIR}" \
-  --model-path "\${MODEL}" \
-  --data-path "\${DATA_PATH}" \
-  --output "\${NO_TOOL_OUT}" \
-  --runs "\${RUNS}" \
-  --max-samples "\${MAX_SAMPLES}" \
-  --temperature "\${TEMPERATURE}" \
+python "${ROOT_DIR}/scripts/run_repeated_no_tool.py" \
+  --upstream-dir "${UPSTREAM_DIR}" \
+  --model-path "${MODEL}" \
+  --data-path "${DATA_PATH}" \
+  --output "${NO_TOOL_OUT}" \
+  --runs "${RUNS}" \
+  --max-samples "${MAX_SAMPLES}" \
+  --temperature "${TEMPERATURE}" \
   --tensor-parallel-size 1 \
   --max-model-len "$MAX_MODEL_LEN"
 
-python "\${UPSTREAM_DIR}/src/run_eval.py" \
-  --model_path "\${MODEL}" \
+python "${UPSTREAM_DIR}/src/run_eval.py" \
+  --model_path "${MODEL}" \
   --backend vllm \
-  --data_path "\${DATA_PATH}" \
-  --output_path "\${FORCE_TOOL_OUT}" \
-  --max_samples "\${MAX_SAMPLES}" \
-  --n_runs "\${RUNS}" \
-  --temperature "\${TEMPERATURE}" \
+  --data_path "${DATA_PATH}" \
+  --output_path "${FORCE_TOOL_OUT}" \
+  --max_samples "${MAX_SAMPLES}" \
+  --n_runs "${RUNS}" \
+  --temperature "${TEMPERATURE}" \
   --max_rounds 12 \
   --max_new_tokens 2048 \
   --tensor_parallel_size 1 \
@@ -84,6 +84,6 @@ python "\${UPSTREAM_DIR}/src/run_eval.py" \
   --reasoning_mode no_reasoning
 
 echo "Repeated-trial artifacts:"
-echo "  hard-no-tool: \${NO_TOOL_OUT}"
-echo "  force-tool:   \${FORCE_TOOL_OUT}"
+echo "  hard-no-tool: ${NO_TOOL_OUT}"
+echo "  force-tool:   ${FORCE_TOOL_OUT}"
 echo "Use label-rule any_failure or majority_failure and preserve the rule in the report."

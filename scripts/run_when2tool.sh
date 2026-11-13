@@ -48,15 +48,28 @@ ln -sfn "${ARTIFACT_DIR}/outputs" "${UPSTREAM_DIR}/outputs"
 ln -sfn "${ARTIFACT_DIR}/probe_data" "${UPSTREAM_DIR}/probe_data"
 ln -sfn "${ARTIFACT_DIR}/figures" "${UPSTREAM_DIR}/figures"
 
+PREPARE_ARGS=(
+  --upstream-dir "${UPSTREAM_DIR}"
+  --model "${MODEL}"
+  --cache-dir "${ROOT_DIR}/.cache/model_snapshots"
+  --alias-dir "${ROOT_DIR}/.cache/models"
+  --output "${ARTIFACT_DIR}/model_manifest.json"
+)
+if [[ -n "${MODEL_REVISION}" ]]; then
+  PREPARE_ARGS+=(--revision "${MODEL_REVISION}")
+fi
+MODEL_LOCAL_PATH="$(python "${ROOT_DIR}/scripts/prepare_model.py" "${PREPARE_ARGS[@]}" --print-path)"
+
 cd "${UPSTREAM_DIR}"
 echo "Model: ${MODEL}"
+echo "Pinned model path: ${MODEL_LOCAL_PATH}"
 echo "Pinned source: $(git rev-parse HEAD)"
 
 if [[ "${MODE}" == "pilot" ]]; then
   OUT="${ARTIFACT_DIR}/outputs/${MODEL}_pilot_all_prompts_no_reasoning.json"
   echo "Running a ${PILOT_N}-task smoke/pilot evaluation (not a full reproduction)."
   python src/run_eval.py \
-    --model_path "${MODEL}" \
+    --model_path "${MODEL_LOCAL_PATH}" \
     --backend vllm \
     --data_path ./data/tasks_v1_test.json \
     --output_path "${OUT}" \
@@ -71,7 +84,7 @@ if [[ "${MODE}" == "pilot" ]]; then
     --reasoning_mode no_reasoning
 else
   echo "Running the official five-step single-hop pipeline. This is GPU-intensive."
-  bash ./run_pipeline.sh --steps "${STEPS}" "${MODEL}"
+  bash ./run_pipeline.sh --steps "${STEPS}" "${MODEL_LOCAL_PATH}"
 fi
 
 echo "Finished. Artifacts are in: ${ARTIFACT_DIR}"

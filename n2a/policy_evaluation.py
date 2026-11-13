@@ -77,7 +77,18 @@ def evaluate_policy_suite(
                 available.append((label, context))
 
         if not available:
-            raise ValueError(f"No records contain the required signals for {policy_id}.")
+            suite[policy_id] = {
+                "policy_name": POLICY_NAMES[policy_id],
+                "status": "NO_ELIGIBLE_RECORDS",
+                "n_evaluated": 0,
+                "n_excluded_missing_signal": len(excluded),
+                "excluded_records": excluded,
+                "decision_metrics": None,
+                "mean_estimated_utility": None,
+                "n_utility_scored": 0,
+                "decisions": [],
+            }
+            continue
 
         labels = [label for label, _ in available]
         contexts = [context for _, context in available]

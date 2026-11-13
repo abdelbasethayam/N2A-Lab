@@ -53,4 +53,6 @@ Compatible with [Streamlit Community Cloud](https://share.streamlit.io/).
 4. v0.4 — Add open-weight white-box experiments for hidden-state extraction and probe training.
 5. v1.0 — Reproducible research lab with pinned artifacts, statistical analysis, and public reports.
 
+For local tests, install development dependencies with `pip install -r requirements-dev.txt`, then run `pytest -q`.
+
 Read [Architecture](docs/ARCHITECTURE.md) and [Research protocol](docs/RESEARCH_PROTOCOL.md) before interpreting results.

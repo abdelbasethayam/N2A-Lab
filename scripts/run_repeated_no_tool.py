@@ -31,7 +31,7 @@ def main():
     sys.path.insert(0, str(upstream / "src"))
 
     from model import AgentModel
-    from utils import detect_tool_format, evaluate_batched, load_tasks_from_path
+    from utils import detect_tool_format, evaluate_batched, load_tasks_from_path, resolve_model_path
 
     tasks = load_tasks_from_path(args.data_path)
     if args.max_samples > 0:
@@ -39,8 +39,9 @@ def main():
     if not tasks:
         raise ValueError("No tasks were loaded.")
 
+    resolved_model_path, _ = resolve_model_path(args.model_path)
     model = AgentModel(
-        model_path=args.model_path,
+        model_path=resolved_model_path,
         backend="vllm",
         temperature=args.temperature,
         max_new_tokens=args.max_new_tokens,

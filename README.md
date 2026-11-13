@@ -4,7 +4,7 @@
 
 N2A Lab is an open research sandbox for studying when an LLM agent should call a tool, when it should answer directly, and whether the expected benefit justifies tool cost and risk.
 
-## Current release: v0.1 — Synthetic policy sandbox
+## Current release: v0.2 — Benchmark adapter + policy research layer
 
 This first release provides a browser-based Streamlit interface, five decision policies, matched synthetic scenarios, tool reliability/cost/risk controls, side-by-side metrics, decision traces, CSV/JSON exports, unit tests, and GitHub Actions CI.
 
@@ -21,6 +21,26 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+## Prepare the When2Tool benchmark
+
+```bash
+pip install -r requirements.txt
+python -m n2a.cli audit-when2tool --output-dir data/when2tool
+```
+
+The adapter pins the Hugging Face dataset revision and the official upstream runner commit. Public task rows do not contain model-specific necessity labels; collect those by evaluating a model in hard-no-tool mode. See [When2Tool reproduction protocol](docs/WHEN2TOOL_REPRODUCTION.md).
+
+## Run a cloud GPU pilot
+
+On a Linux NVIDIA GPU runtime:
+
+```bash
+pip install -r requirements-research.txt
+bash scripts/run_when2tool.sh --model qwen3-4b-instruct --pilot 100
+```
+
+Use `--full` for the official five-step single-hop pipeline. A pilot is a runtime smoke test, not a paper reproduction.
+
 ## Deploy free
 
 Compatible with [Streamlit Community Cloud](https://share.streamlit.io/).
@@ -35,11 +55,19 @@ Compatible with [Streamlit Community Cloud](https://share.streamlit.io/).
 .
 ├── app.py
 ├── n2a/
-│   ├── __init__.py
+│   ├── benchmarks/when2tool.py
 │   ├── engine.py
-│   └── scenarios.py
-├── tests/test_engine.py
+│   ├── evaluation.py
+│   ├── metrics.py
+│   ├── necessity.py
+│   ├── policies.py
+│   ├── scenarios.py
+│   └── scoring.py
+├── pages/1_When2Tool_Benchmark.py
+├── scripts/
+├── tests/
 ├── docs/ARCHITECTURE.md
+├── docs/WHEN2TOOL_REPRODUCTION.md
 ├── docs/RESEARCH_PROTOCOL.md
 ├── .github/workflows/tests.yml
 └── requirements.txt

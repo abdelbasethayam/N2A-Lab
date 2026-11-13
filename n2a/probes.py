@@ -124,3 +124,168 @@ def export_probe_records(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return payload
+
+
+def train_probe_with_repeated_labels(
+    train_hidden_path: str | Path,
+    train_metadata_path: str | Path,
+    train_no_tool_payload: Any,
+    test_hidden_path: str | Path,
+    test_metadata_path: str | Path,
+    test_no_tool_payload: Any,
+    output_dir: str | Path,
+    *,
+    label_rule: str = "any_failure",
+    reg: float = 10000.0,
+    layer: str | int = "all",
+) -> dict[str, Any]:
+    """Train a fresh probe on repeated-run labels aligned to official hidden states.
+
+    This is an N2A extension, not the original one-run When2Tool probe protocol.
+    """
+    if reg <= 0:
+        raise ValueError("reg must be positive")
+    try:
+        import torch
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.metrics import accuracy_score, roc_auc_score
+    except ImportError as exc:
+        raise ImportError("Install requirements-research.txt to train probes.") from exc
+
+    from n2a.necessity import derive_necessity_labels
+    from n2a.metrics import classification_metrics
+
+    train_label_payload = derive_necessity_labels(
+        train_no_tool_payload, label_rule=label_rule
+    )
+    test_label_payload = derive_necessity_labels(
+        test_no_tool_payload, label_rule=label_rule
+    )
+    train_labels = {row["task_id"]: row["tool_necessary"] for row in train_label_payload["labels"]}
+    test_labels = {row["task_id"]: row["tool_necessary"] for row in test_label_payload["labels"]}
+
+    if set(train_labels).intersection(test_labels):
+        raise ValueError("Train/test task IDs overlap; refusing to train with leakage.")
+
+    def load_aligned(hidden_path, metadata_path, label_map, split_name):
+        hidden = torch.load(hidden_path, map_location="cpu", weights_only=True)
+        with open(metadata_path, "r", encoding="utf-8") as handle:
+            metadata = json.load(handle).get("task_meta", [])
+        if len(hidden) != len(metadata):
+            raise ValueError(f"{split_name}: hidden-state rows and metadata rows differ.")
+        indices = []
+        ids = []
+        meta = []
+        for index, item in enumerate(metadata):
+            task_id = item["id"]
+            if task_id in label_map:
+                indices.append(index)
+                ids.append(task_id)
+                meta.append(item)
+        missing = set(label_map).difference(ids)
+        if missing:
+            raise ValueError(f"{split_name}: no hidden states for task IDs {sorted(missing)[:10]}")
+        if not indices:
+            raise ValueError(f"{split_name}: no aligned examples.")
+        return hidden[indices], [int(label_map[task_id]) for task_id in ids], ids, meta
+
+    H_train, y_train, train_ids, train_meta = load_aligned(
+        train_hidden_path, train_metadata_path, train_labels, "train"
+    )
+    H_test, y_test, test_ids, test_meta = load_aligned(
+        test_hidden_path, test_metadata_path, test_labels, "test"
+    )
+    if len(set(y_train)) < 2:
+        raise ValueError("Repeated-run training labels contain only one class.")
+
+    if layer == "all":
+        X_train = H_train.reshape(H_train.shape[0], -1).numpy()
+        X_test = H_test.reshape(H_test.shape[0], -1).numpy()
+        saved_layer = "all"
+    else:
+        layer_index = int(layer)
+        if layer_index < 0:
+            layer_index += H_train.shape[1]
+        if not 0 <= layer_index < H_train.shape[1]:
+            raise ValueError("Requested probe layer is out of range.")
+        X_train = H_train[:, layer_index, :].numpy()
+        X_test = H_test[:, layer_index, :].numpy()
+        saved_layer = layer_index
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    classifier = LogisticRegression(
+        C=1.0 / reg, solver="lbfgs", max_iter=2000, random_state=42
+    )
+    classifier.fit(X_train_scaled, y_train)
+    probabilities = classifier.predict_proba(X_test_scaled)[:, 1]
+    predictions = (probabilities >= 0.5).astype(int)
+    metrics = classification_metrics(y_test, predictions.tolist(), probabilities.tolist())
+    metrics["train_accuracy"] = float(accuracy_score(y_train, classifier.predict(X_train_scaled)))
+    metrics["test_accuracy"] = float(accuracy_score(y_test, predictions))
+    metrics["test_auroc"] = (
+        float(roc_auc_score(y_test, probabilities)) if len(set(y_test)) > 1 else None
+    )
+
+    target = Path(output_dir)
+    target.mkdir(parents=True, exist_ok=True)
+    probe_path = target / "probe_repeated_labels.pt"
+    torch.save({
+        "coef": torch.from_numpy(classifier.coef_[0]),
+        "intercept": float(classifier.intercept_[0]),
+        "scaler_mean": torch.from_numpy(scaler.mean_),
+        "scaler_scale": torch.from_numpy(scaler.scale_),
+        "C": 1.0 / reg,
+        "reg": reg,
+        "mode": "no_reasoning",
+        "layer": saved_layer,
+        "label_rule": label_rule,
+        "label_source": "repeated_hard_no_tool_trials",
+    }, probe_path)
+
+    signal_records = []
+    for task_id, meta, label, probability in zip(test_ids, test_meta, y_test, probabilities):
+        signal_records.append({
+            "task_id": task_id,
+            "necessity_label": int(label),
+            "difficulty": meta.get("difficulty", "unknown"),
+            "env_name": meta.get("env", "unknown"),
+            "probe_necessity_probability": float(probability),
+            "probe_label_rule": label_rule,
+            "probe_layer": saved_layer,
+        })
+    signal_payload = {
+        "signal_name": "P5_repeated_label_hidden_state_probe",
+        "n_records": len(signal_records),
+        "label_rule": label_rule,
+        "probe_path": str(probe_path),
+        "records": signal_records,
+        "warning": (
+            "This probe is trained on repeated-run necessity labels and is not the original "
+            "one-run When2Tool probe. Evaluate only on the disjoint test task IDs."
+        ),
+    }
+    signal_path = target / "test_repeated_probe_signals.json"
+    signal_path.write_text(
+        json.dumps(signal_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    result = {
+        "experiment": "N2A repeated-label linear probe",
+        "label_rule": label_rule,
+        "reg": reg,
+        "layer": saved_layer,
+        "n_train": len(train_ids),
+        "n_test": len(test_ids),
+        "n_train_necessary": sum(y_train),
+        "n_test_necessary": sum(y_test),
+        "metrics": metrics,
+        "probe_path": str(probe_path),
+        "test_signals_path": str(signal_path),
+        "evidence_status": "MODEL_RUNS_REQUIRED",
+    }
+    (target / "repeated_probe_results.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return result

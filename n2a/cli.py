@@ -8,6 +8,8 @@ from pathlib import Path
 from n2a.benchmarks.when2tool import audit_when2tool, prepare_when2tool
 from n2a.evaluation import evaluate_outputs
 from n2a.necessity import derive_necessity_labels
+from n2a.policy_evaluation import evaluate_policy_suite
+from n2a.policies import PolicyConfig
 
 
 def _read_json(path: str):
@@ -41,6 +43,15 @@ def main():
     evaluate.add_argument("--cost-per-call", type=float, default=0.0)
     evaluate.add_argument("--risk-per-call", type=float, default=0.0)
     evaluate.add_argument("--output", required=True)
+
+    suite = commands.add_parser("policy-suite", help="Compare P0-P6 on a table of model-derived signals.")
+    suite.add_argument("--records", required=True, help="JSON list with necessity_label and policy signal fields.")
+    suite.add_argument("--output", required=True)
+    suite.add_argument("--necessity-threshold", type=float, default=0.5)
+    suite.add_argument("--verbalized-threshold", type=float, default=0.5)
+    suite.add_argument("--surface-threshold", type=float, default=0.5)
+    suite.add_argument("--probe-threshold", type=float, default=0.5)
+    suite.add_argument("--uncertainty-aversion", type=float, default=0.0)
 
     args = parser.parse_args()
 
@@ -77,6 +88,25 @@ def main():
             "n_matched_output_records": result["n_matched_output_records"],
             "decision_metrics": result["decision_metrics"],
             "outcome_utility": result["outcome_utility"],
+            "output": str(Path(args.output).resolve()),
+        }, indent=2))
+    elif args.command == "policy-suite":
+        records = _read_json(args.records)
+        config = PolicyConfig(
+            necessity_threshold=args.necessity_threshold,
+            verbalized_threshold=args.verbalized_threshold,
+            surface_threshold=args.surface_threshold,
+            probe_threshold=args.probe_threshold,
+            uncertainty_aversion=args.uncertainty_aversion,
+        )
+        result = evaluate_policy_suite(records, config=config)
+        _write_json(args.output, result)
+        print(json.dumps({
+            "n_records": result["n_records"],
+            "policies": {
+                key: value["decision_metrics"]
+                for key, value in result["policies"].items()
+            },
             "output": str(Path(args.output).resolve()),
         }, indent=2))
 

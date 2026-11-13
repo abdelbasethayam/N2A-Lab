@@ -52,7 +52,7 @@ A probe's predictive performance does not establish awareness, causal control, o
 - **P5:** act on a held-out hidden-state probe probability.
 - **P6:** act when expected marginal success value exceeds tool cost, risk, and uncertainty penalty.
 
-The policies consume precomputed signals. They do not generate missing signals or silently impute them. The evaluator reports eligible sample counts separately for each policy.
+The policies currently run as an offline decision/evaluation layer over precomputed signals. They do not yet intercept a live model's tool calls or execute the selected action in an agent loop. They do not generate missing signals or silently impute them. The evaluator reports eligible sample counts separately for each policy; a live policy gateway is a later implementation milestone.
 
 ## Decision lifecycle
 

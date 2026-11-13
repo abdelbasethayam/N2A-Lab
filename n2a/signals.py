@@ -23,7 +23,7 @@ def parse_verbalized_necessity(text: str) -> dict[str, Any]:
         r"\banswer directly\b",
         r"\b(?:do not|don't|does not|doesn't) need\b.*\btool\b",
         r"\bno tool\b.*\b(?:needed|necessary|required)\b",
-        r"\bwithout (?:using )?a tool\b",
+        r"\bcan\b.*\bwithout (?:using )?a tool\b",
     ]
     need_tool_patterns = [
         r"\bneed(?:s)?\b.*\btool\b",

@@ -171,4 +171,4 @@ with st.expander("Research roadmap"):
         """
     )
 
-st.caption("N2A Lab · v0.1.0 · Synthetic demonstration only")
+st.caption("N2A Lab · v0.2.0 · Synthetic sandbox + benchmark research adapter")

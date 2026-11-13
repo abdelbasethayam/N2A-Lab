@@ -26,6 +26,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+MODEL_KEY="$(basename "$MODEL")"
+
 if ! command -v nvidia-smi >/dev/null 2>&1; then
   echo "ERROR: a Linux NVIDIA GPU runtime is required for the official vLLM pipeline." >&2
   echo "Use a cloud GPU runtime (recommended: 24 GB+ VRAM for Qwen3-4B) and install requirements-research.txt." >&2
@@ -66,7 +68,7 @@ echo "Pinned model path: ${MODEL_LOCAL_PATH}"
 echo "Pinned source: $(git rev-parse HEAD)"
 
 if [[ "${MODE}" == "pilot" ]]; then
-  OUT="${ARTIFACT_DIR}/outputs/${MODEL}_pilot_all_prompts_no_reasoning.json"
+  OUT="${ARTIFACT_DIR}/outputs/${MODEL_KEY}_pilot_all_prompts_no_reasoning.json"
   echo "Running a ${PILOT_N}-task smoke/pilot evaluation (not a full reproduction)."
   python src/run_eval.py \
     --model_path "${MODEL_LOCAL_PATH}" \

@@ -62,3 +62,41 @@ def test_utility_uses_explicit_cost_units():
     result = outcome_utility([1, 0], [2, 1], success_value=1.0, cost_per_call=0.1, risk_per_call=0.05)
     assert result["total_tool_calls"] == 3
     assert result["net_utility"] == pytest.approx(0.55)
+
+
+def test_policy_suite_compares_all_policies_on_precomputed_signals():
+    from n2a.policy_evaluation import evaluate_policy_suite
+
+    records = [
+        {
+            "task_id": "a",
+            "necessity_label": 0,
+            "difficulty": "easy",
+            "no_tool_success_probability": 0.95,
+            "verbalized_necessity_probability": 0.1,
+            "probe_necessity_probability": 0.05,
+            "expected_no_tool_success": 0.95,
+            "expected_with_tool_success": 0.98,
+            "tool_cost": 0.1,
+            "risk_penalty": 0.02,
+            "uncertainty": 0.1,
+        },
+        {
+            "task_id": "b",
+            "necessity_label": 1,
+            "difficulty": "hard",
+            "no_tool_success_probability": 0.10,
+            "verbalized_necessity_probability": 0.9,
+            "probe_necessity_probability": 0.95,
+            "expected_no_tool_success": 0.10,
+            "expected_with_tool_success": 0.95,
+            "tool_cost": 0.1,
+            "risk_penalty": 0.02,
+            "uncertainty": 0.1,
+        },
+    ]
+    result = evaluate_policy_suite(records)
+    assert set(result["policies"]) == {"P0", "P1", "P2", "P3", "P4", "P5", "P6"}
+    assert result["policies"]["P0"]["decision_metrics"]["call_rate"] == 0.0
+    assert result["policies"]["P1"]["decision_metrics"]["call_rate"] == 1.0
+    assert result["policies"]["P5"]["decision_metrics"]["brier_score"] is not None

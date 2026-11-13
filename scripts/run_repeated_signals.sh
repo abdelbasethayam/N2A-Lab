@@ -67,8 +67,8 @@ else
   DATA_PATH="./data/tasks_v1_test.json"
 fi
 
-NO_TOOL_OUT="${ARTIFACT_DIR}/${MODEL}_${SPLIT}_hard_no_tool_${RUNS}runs.json"
-FORCE_TOOL_OUT="${ARTIFACT_DIR}/${MODEL}_${SPLIT}_force_tool_${RUNS}runs.json"
+NO_TOOL_OUT="${ARTIFACT_DIR}/${MODEL_KEY}_${SPLIT}_hard_no_tool_${RUNS}runs.json"
+FORCE_TOOL_OUT="${ARTIFACT_DIR}/${MODEL_KEY}_${SPLIT}_force_tool_${RUNS}runs.json"
 
 python "${ROOT_DIR}/scripts/run_repeated_no_tool.py" \
   --upstream-dir "${UPSTREAM_DIR}" \

@@ -1,0 +1,94 @@
+# When2Tool Integration and Reproduction Protocol
+
+## Immutable source pins
+
+N2A Lab pins two separate artifacts:
+
+- Official runner: \`Trustworthy-ML-Lab/when2tool\` at commit \`ef0cf1ea72eb8acdfd3fb1251c4b6a9a0131a23e\`.
+- Dataset: \`cesun/When2Tool\` at revision \`153066c0285887915fc6b530c9af2987a2c859ac\`.
+
+Do not silently update either pin. A pin update requires a new audit, a changelog entry, and regenerated manifests.
+
+## Dataset structure
+
+| Configuration | Train | Test | Total |
+|---|---:|---:|---:|
+| single_hop | 900 | 2,250 | 3,150 |
+| multi_hop | 180 | 450 | 630 |
+| **Total** | **1,080** | **2,700** | **3,780** |
+
+The public task rows contain task ID, difficulty, instruction, environment, available tools, environment parameters, reference answer, steps, and tags. They do **not** contain universal model-independent necessity labels.
+
+The adapter in \`n2a/benchmarks/when2tool.py\` converts Hugging Face rows to the task schema expected by the official runner. It does not synthesize necessity labels.
+
+## Prepare and audit the dataset
+
+Install the lightweight benchmark dependencies:
+
+\`\`\`bash
+pip install -r requirements.txt
+python -m n2a.cli audit-when2tool --output-dir data/when2tool
+\`\`\`
+
+This exports the four upstream-compatible JSON files and a manifest containing source revisions, row counts, and SHA-256 hashes. The audit checks expected split sizes, duplicate IDs, and train/test ID separation.
+
+## GPU pilot
+
+The official model pipeline uses vLLM and Transformers. Run it in a Linux NVIDIA cloud GPU runtime, not on a CPU-only Streamlit instance or a standard Mac environment.
+
+\`\`\`bash
+pip install -r requirements-research.txt
+bash scripts/run_when2tool.sh --model qwen3-4b-instruct --pilot 100
+\`\`\`
+
+The pilot runs the official five prompt modes on a 100-task slice, without reasoning, using one run. It is a runtime smoke test, not a paper reproduction and not suitable for final claims.
+
+## Full single-hop reproduction
+
+\`\`\`bash
+bash scripts/run_when2tool.sh --model qwen3-4b-instruct --full
+\`\`\`
+
+The pinned upstream pipeline runs:
+1. Prompt baselines across the official prompt and reasoning settings.
+2. Model-specific hard-no-tool evaluation and hidden-state extraction.
+3. Linear-probe training on the training split.
+4. Probe&Prefill evaluation with threshold sweeps.
+5. Accuracy/tool-call trade-off figures.
+
+The default upstream settings are computationally expensive. Start with one model and retain the exact model revision, hardware, package versions, decoding settings, seeds, output files, and run logs.
+
+## Necessity-label semantics
+
+The official When2Tool feature-extraction code derives a binary label from its hard-no-tool model evaluation: \`tool_necessary = 1\` when the model's no-tool answer is incorrect; otherwise \`0\`.
+
+N2A's \`derive_necessity_labels\` makes the label rule explicit:
+- \`single_failure\`: exactly one no-tool outcome per task; reproduces the one-run binary rule.
+- \`any_failure\`: for repeated attempts, mark necessary if at least one no-tool attempt fails.
+- \`majority_failure\`: for repeated attempts, mark necessary if fewer than half of no-tool attempts succeed.
+
+These rules are not interchangeable. Always record the chosen rule and number of trials. For P32-style repeated-attempt analyses, keep those labels separate from the P31/When2Tool one-run labels.
+
+## N2A P0–P6 policy layer
+
+| Policy | Definition | Required signal |
+|---|---|---|
+| P0 | Never call | None |
+| P1 | Always call | None |
+| P2 | No-tool capability threshold | Empirical no-tool success probability |
+| P3 | Verbalized necessity | Explicit model self-report score |
+| P4 | Surface/difficulty heuristic | Difficulty or predeclared surface score |
+| P5 | Internal-state probe | Held-out probe probability |
+| P6 | N2A uncertainty-/utility-aware | Expected success gain, tool cost, risk, uncertainty |
+
+Thresholds and costs must be selected on training/validation data or preregistered. Do not tune them on the locked test split.
+
+## Metrics
+
+The implementation reports action accuracy, precision, recall, F1, MCC, over-calling and missed-necessity rates, Brier score and ECE when probabilities are available, task success, tool calls, tool cost, risk cost, latency cost, net utility, and cost per success.
+
+Utility units are user-specified. Cross-paper utility comparisons are invalid unless reward and cost schedules are aligned.
+
+## What counts as a valid reproduction?
+
+A successful import, passing unit tests, or a pilot run is not a reproduction. A reproduction requires matching the paper's pinned model, data splits, prompt templates, decoding settings, evaluation loop, label construction, probe extraction location, training procedure, and metrics. Keep raw per-task outputs and a complete run manifest.

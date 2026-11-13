@@ -27,7 +27,7 @@ def main():
 
     from huggingface_hub import HfApi, snapshot_download
 
-    resolved = resolve_model_path(args.model)
+    resolved, was_alias = resolve_model_path(args.model)
     local_candidate = Path(resolved).expanduser()
     model_repo_id = resolved
     if local_candidate.exists():

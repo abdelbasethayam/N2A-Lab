@@ -10,7 +10,7 @@ from n2a.evaluation import evaluate_outputs
 from n2a.necessity import derive_necessity_labels
 from n2a.policy_evaluation import evaluate_policy_suite
 from n2a.policies import POLICY_NAMES, PolicyConfig
-from n2a.probes import export_probe_records
+from n2a.probes import export_probe_records, train_probe_with_repeated_labels
 from n2a.signals import build_policy_signal_records
 
 
@@ -73,6 +73,18 @@ def main():
     signals.add_argument("--risk-penalty", type=float, default=0.0)
     signals.add_argument("--value-of-success", type=float, default=1.0)
     signals.add_argument("--output", required=True)
+
+    retrain = commands.add_parser("train-repeated-probe", help="Train P5 on repeated no-tool labels aligned to official hidden states.")
+    retrain.add_argument("--train-hidden", required=True)
+    retrain.add_argument("--train-metadata", required=True)
+    retrain.add_argument("--train-no-tool-outputs", required=True)
+    retrain.add_argument("--test-hidden", required=True)
+    retrain.add_argument("--test-metadata", required=True)
+    retrain.add_argument("--test-no-tool-outputs", required=True)
+    retrain.add_argument("--label-rule", choices=["single_failure", "any_failure", "majority_failure"], default="any_failure")
+    retrain.add_argument("--reg", type=float, default=10000.0)
+    retrain.add_argument("--layer", default="all")
+    retrain.add_argument("--output-dir", required=True)
 
     args = parser.parse_args()
 
@@ -162,6 +174,20 @@ def main():
             "source_run_counts": result["source_run_counts"],
             "output": str(Path(args.output).resolve()),
         }, indent=2))
+    elif args.command == "train-repeated-probe":
+        result = train_probe_with_repeated_labels(
+            args.train_hidden,
+            args.train_metadata,
+            _read_json(args.train_no_tool_outputs),
+            args.test_hidden,
+            args.test_metadata,
+            _read_json(args.test_no_tool_outputs),
+            args.output_dir,
+            label_rule=args.label_rule,
+            reg=args.reg,
+            layer=args.layer,
+        )
+        print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

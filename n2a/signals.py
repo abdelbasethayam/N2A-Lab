@@ -120,14 +120,16 @@ def build_policy_signal_records(
 
     records = []
     for task_id, no_tool in p0_by_id.items():
-        p0 = float(no_tool["no_tool_success_probability"])
+        p0_observed = float(no_tool["no_tool_success_probability"])
+        n0 = int(no_tool["no_tool_trials"])
+        p0 = p0_observed if n0 >= 2 else None
         p1_record = p1_by_id.get(task_id)
-        p1 = float(p1_record["success_probability"]) if p1_record else None
+        p1_observed = float(p1_record["success_probability"]) if p1_record else None
         n1 = int(p1_record["trials"]) if p1_record else 0
+        p1 = p1_observed if n1 >= 2 else None
         uncertainty = None
-        if p1 is not None:
-            n0 = int(no_tool["no_tool_trials"])
-            variance = p0 * (1.0 - p0) / max(n0, 1) + p1 * (1.0 - p1) / max(n1, 1)
+        if p0 is not None and p1 is not None:
+            variance = p0 * (1.0 - p0) / n0 + p1 * (1.0 - p1) / n1
             uncertainty = math.sqrt(max(variance, 0.0))
 
         verbalized = verbalized_by_id.get(task_id, {"score": None, "status": "not_provided"})
@@ -135,13 +137,15 @@ def build_policy_signal_records(
         record = {
             "task_id": task_id,
             "necessity_label": int(no_tool["tool_necessary"]),
+            "no_tool_success_observed": p0_observed,
             "no_tool_success_probability": p0,
-            "no_tool_trials": int(no_tool["no_tool_trials"]),
+            "no_tool_trials": n0,
             "verbalized_necessity_score": verbalized.get("score"),
             "verbalized_parse_status": verbalized.get("status"),
             "probe_necessity_probability": probe.get("probe_necessity_probability"),
             "expected_no_tool_success": p0,
             "expected_with_tool_success": p1,
+            "observed_force_tool_success_rate": p1_observed,
             "uncertainty": uncertainty,
             "tool_cost": float(tool_cost),
             "risk_penalty": float(risk_penalty),
@@ -164,10 +168,10 @@ def build_policy_signal_records(
         },
         "records": records,
         "signal_semantics": {
-            "P2": "Empirical no-tool success frequency; a single trial yields only a 0/1 observation.",
+            "P2": "Empirical no-tool success frequency; exposed as a probability only when at least two trials are available.",
             "P3": "Categorical parsed self-report score; ambiguous/missing statements remain null and are excluded.",
             "P5": "Official linear-probe probability; evaluate on held-out tasks.",
-            "P6": "Expected success gain estimated from matched no-tool and forced-tool runs; uncertainty is the standard error of the difference.",
+            "P6": "Expected success gain estimated from matched no-tool and forced-tool runs with at least two trials per condition; uncertainty is the standard error of the difference.",
         },
         "warning": (
             "Expected success rates are empirical estimates, not causal effects. Forced-tool and no-tool "

@@ -7,6 +7,7 @@ SPLIT="test"
 RUNS=10
 MAX_SAMPLES=0
 TEMPERATURE=0.7
+MAX_MODEL_LEN=32768
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -77,7 +78,7 @@ python "\${UPSTREAM_DIR}/src/run_eval.py" \
   --max_rounds 12 \
   --max_new_tokens 2048 \
   --tensor_parallel_size 1 \
-  --max_model_len 8192 \
+  --max_model_len "$MAX_MODEL_LEN" \
   --record_mode lite \
   --prompt_mode force_tool \
   --reasoning_mode no_reasoning

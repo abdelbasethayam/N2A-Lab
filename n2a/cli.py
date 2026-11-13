@@ -10,6 +10,7 @@ from n2a.evaluation import evaluate_outputs
 from n2a.necessity import derive_necessity_labels
 from n2a.policy_evaluation import evaluate_policy_suite
 from n2a.policies import PolicyConfig
+from n2a.probes import export_probe_records
 
 
 def _read_json(path: str):
@@ -52,6 +53,13 @@ def main():
     suite.add_argument("--surface-threshold", type=float, default=0.5)
     suite.add_argument("--probe-threshold", type=float, default=0.5)
     suite.add_argument("--uncertainty-aversion", type=float, default=0.0)
+
+    probe = commands.add_parser("probe-signals", help="Export per-task P5 probabilities from official probe artifacts.")
+    probe.add_argument("--hidden", required=True)
+    probe.add_argument("--probe", required=True)
+    probe.add_argument("--labels", required=True)
+    probe.add_argument("--temperature", type=float, default=1.0)
+    probe.add_argument("--output", required=True)
 
     args = parser.parse_args()
 
@@ -107,6 +115,16 @@ def main():
                 key: value["decision_metrics"]
                 for key, value in result["policies"].items()
             },
+            "output": str(Path(args.output).resolve()),
+        }, indent=2))
+    elif args.command == "probe-signals":
+        result = export_probe_records(
+            args.hidden, args.probe, args.labels, args.output,
+            temperature=args.temperature,
+        )
+        print(json.dumps({
+            "n_records": result["n_records"],
+            "signal_name": result["signal_name"],
             "output": str(Path(args.output).resolve()),
         }, indent=2))
 

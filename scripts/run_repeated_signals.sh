@@ -8,6 +8,7 @@ RUNS=10
 MAX_SAMPLES=0
 TEMPERATURE=0.7
 MAX_MODEL_LEN=32768
+MODEL_REVISION=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -17,8 +18,9 @@ while [[ $# -gt 0 ]]; do
     --max-samples) MAX_SAMPLES="$2"; shift 2 ;;
     --temperature) TEMPERATURE="$2"; shift 2 ;;
     --max-model-len) MAX_MODEL_LEN="$2"; shift 2 ;;
+    --revision) MODEL_REVISION="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--model qwen3-4b-instruct] [--split train|test] [--runs 10] [--max-samples 100] [--max-model-len 32768]"
+      echo "Usage: $0 [--model qwen3-4b-instruct] [--split train|test] [--runs 10] [--max-samples 100] [--max-model-len 32768] [--revision HF_COMMIT_SHA]"
       exit 0
       ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
@@ -47,6 +49,18 @@ UPSTREAM_DIR="${ROOT_DIR}/.cache/when2tool"
 ARTIFACT_DIR="${ROOT_DIR}/artifacts/when2tool/repeated"
 mkdir -p "${ARTIFACT_DIR}"
 
+PREPARE_ARGS=(
+  --upstream-dir "${UPSTREAM_DIR}"
+  --model "${MODEL}"
+  --cache-dir "${ROOT_DIR}/.cache/model_snapshots"
+  --alias-dir "${ROOT_DIR}/.cache/models"
+  --output "${ARTIFACT_DIR}/model_manifest.json"
+)
+if [[ -n "${MODEL_REVISION}" ]]; then
+  PREPARE_ARGS+=(--revision "${MODEL_REVISION}")
+fi
+MODEL_LOCAL_PATH="$(python "${ROOT_DIR}/scripts/prepare_model.py" "${PREPARE_ARGS[@]}" --print-path)"
+
 if [[ "$SPLIT" == "train" ]]; then
   DATA_PATH="./data/tasks_v1_train.json"
 else
@@ -58,7 +72,7 @@ FORCE_TOOL_OUT="${ARTIFACT_DIR}/${MODEL}_${SPLIT}_force_tool_${RUNS}runs.json"
 
 python "${ROOT_DIR}/scripts/run_repeated_no_tool.py" \
   --upstream-dir "${UPSTREAM_DIR}" \
-  --model-path "${MODEL}" \
+  --model-path "${MODEL_LOCAL_PATH}" \
   --data-path "${DATA_PATH}" \
   --output "${NO_TOOL_OUT}" \
   --runs "${RUNS}" \
@@ -68,7 +82,7 @@ python "${ROOT_DIR}/scripts/run_repeated_no_tool.py" \
   --max-model-len "$MAX_MODEL_LEN"
 
 python "${UPSTREAM_DIR}/src/run_eval.py" \
-  --model_path "${MODEL}" \
+  --model_path "${MODEL_LOCAL_PATH}" \
   --backend vllm \
   --data_path "${DATA_PATH}" \
   --output_path "${FORCE_TOOL_OUT}" \

@@ -138,7 +138,7 @@ def main():
         print(json.dumps({
             "n_records": result["n_records"],
             "policies": {
-                key: value["decision_metrics"]
+                key: value.get("decision_metrics")
                 for key, value in result["policies"].items()
             },
             "output": str(Path(args.output).resolve()),

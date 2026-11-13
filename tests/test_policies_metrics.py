@@ -17,7 +17,7 @@ def test_p2_uses_no_tool_success_probability():
 
 
 def test_p3_requires_explicit_verbalized_signal():
-    context = DecisionContext(task_id="t1", verbalized_necessity_probability=0.8)
+    context = DecisionContext(task_id="t1", verbalized_necessity_score=0.8)
     assert decide("P3", context)["action"] == "CALL"
     with pytest.raises(ValueError):
         decide("P3", DecisionContext(task_id="t2"))

@@ -48,8 +48,8 @@ def main():
         kwargs = {"output_dir": args.output_dir}
         if args.revision:
             kwargs["revision"] = args.revision
-        manifest = prepare_when2tool(**kwargs)
         audit_result = audit_when2tool(revision=args.revision) if args.revision else audit_when2tool()
+        manifest = prepare_when2tool(**kwargs)
         _write_json(str(Path(args.output_dir) / "when2tool_audit.json"), audit_result)
         print(json.dumps({
             "status": "PASS",

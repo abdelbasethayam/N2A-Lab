@@ -16,8 +16,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.title("🧪 N2A Lab")
-st.subheader("When should an LLM agent call a tool?")
-st.caption("Tool necessity · Decision bias · Calibration · Realized utility")
+st.subheader("Synthetic policy sandbox")
+st.caption("Illustrative scenarios for interface and policy-logic testing — not benchmark evidence.")
 
 st.warning(
     "Research status — v0.1 is a synthetic policy simulator with hand-authored scenarios. "

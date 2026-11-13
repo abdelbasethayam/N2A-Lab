@@ -54,6 +54,8 @@ bash scripts/run_when2tool.sh --model qwen3-4b-instruct --pilot 100
 
 Use `--full` for the official five-step single-hop pipeline. A pilot is a runtime smoke test, not a paper reproduction.
 
+For repeated no-tool/forced-tool trials and the N2A P0–P6 extension, see [the repeated-trial protocol](docs/WHEN2TOOL_REPRODUCTION.md#repeated-trial-n2a-extension). It keeps the original P31 one-run labels separate and retrains the P5 probe when the label rule changes.
+
 ## Deploy free
 
 Compatible with [Streamlit Community Cloud](https://share.streamlit.io/).

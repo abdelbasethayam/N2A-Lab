@@ -4,47 +4,81 @@
 
 N2A Lab is a research workbench, not a general-purpose agent framework. Its central question is:
 
-> Given a task, a candidate tool, a model, and a cost/risk context, when should the agent call the tool, and did that action improve realized utility?
+> Given a task, a model, a candidate tool, and a cost/risk context, when should the agent call the tool, and does that action improve task success and net utility?
 
-The project keeps experimental decision logic separate from the user interface.
+The project separates benchmark ingestion, model execution, signal extraction, decision policies, outcome evaluation, and user interface. Synthetic demonstrations never share result tables with real model runs.
 
-## Current v0.1 components
+## Current components
 
-- app.py: Streamlit UI, experiment controls, comparison table, traces, and exports.
-- n2a/scenarios.py: explicit synthetic fixtures and local read-only tool functions.
-- n2a/engine.py: deterministic policy execution, expected utility calculation, authorization gate, and trace generation.
-- tests/: unit tests for policy behavior and governance gates.
+| Component | Responsibility |
+|---|---|
+| app.py | Synthetic policy sandbox and top-level app |
+| pages/1_When2Tool_Benchmark.py | Pinned public benchmark explorer |
+| n2a/benchmarks/when2tool.py | Hugging Face loading, official task-schema normalization, split audit, immutable manifest |
+| n2a/scenarios.py | Hand-authored synthetic fixtures only |
+| n2a/engine.py | Synthetic policy simulator only |
+| n2a/scoring.py | Answer and tool-call scoring compatible with official output schema |
+| n2a/necessity.py | Model-relative labels from explicit hard-no-tool trials |
+| n2a/probes.py | Official probe inference and repeated-label probe training |
+| n2a/signals.py | Matched no-tool, forced-tool, reasoning, and probe signal joins |
+| n2a/policies.py | P0–P6 policy definitions |
+| n2a/policy_evaluation.py | Policy comparison with per-policy signal eligibility |
+| n2a/metrics.py | Decision, calibration, and utility metrics |
+| n2a/evaluation.py | Evaluation of observed model outputs |
+| n2a/cli.py | Reproducible data, label, signal, probe, and evaluation commands |
+| scripts/ | Pinned upstream bootstrap and cloud GPU runners |
+| tests/ | Unit and integration-contract tests |
+
+## Evidence and construct separation
+
+The system keeps these constructs separate:
+
+1. **Capability / necessity (N):** empirical success without a tool under a specified model, prompt, decoding, and evaluator protocol.
+2. **Internal signal (Z):** a representation or observable feature that predicts the operational necessity label.
+3. **Belief / self-assessment (B):** the model's verbalized or otherwise explicit estimate of necessity.
+4. **Action (A):** call, no-call, abstain, clarify, verify, or stop.
+5. **Outcome (O):** answer correctness and task completion.
+6. **Utility (U):** outcome value minus tool cost, latency, privacy, and risk.
+
+A probe's predictive performance does not establish awareness, causal control, or good policy behavior. Probe&Prefill is an intervention and must be evaluated separately from probe decodability.
+
+## P0–P6 policies
+
+- **P0:** never call.
+- **P1:** always call.
+- **P2:** call when estimated no-tool success probability falls below a fixed threshold.
+- **P3:** act on an explicit verbalized necessity score; ambiguous statements are excluded rather than imputed.
+- **P4:** transparent surface/difficulty heuristic.
+- **P5:** act on a held-out hidden-state probe probability.
+- **P6:** act when expected marginal success value exceeds tool cost, risk, and uncertainty penalty.
+
+The policies consume precomputed signals. They do not generate missing signals or silently impute them. The evaluator reports eligible sample counts separately for each policy.
 
 ## Decision lifecycle
 
-1. **N — Necessity estimate:** estimate success without the tool.
-2. **G — Expected gain:** estimate the incremental success probability from tool access.
-3. **U — Expected net utility:** expected gain × value of success − call cost − risk penalty.
-4. **A — Action:** call or do not call, subject to authorization.
-5. **O — Outcome:** evaluate the returned answer against an independent reference.
-6. **R — Realized utility:** observed reward less realized costs and risk penalties.
+1. Estimate no-tool capability from repeated no-tool trials.
+2. Estimate tool-enabled capability from matched forced-tool trials.
+3. Extract self-report and hidden-state signals.
+4. Apply a fixed P0–P6 decision rule.
+5. Execute or ingest the corresponding model action.
+6. Score final correctness, call count, latency, and utility.
 
-The labels and probability values in v0.1 are hand-authored teaching fixtures. They are not inferred from a language model.
+Expected probabilities and thresholds must be calibrated or selected on training/validation data. Locked test data must not be used for tuning.
 
-## Planned adapters
+## Model execution
 
-### Benchmark adapter
-Load official dataset splits without rewriting their labels. Preserve source item IDs, versions, licenses, and split definitions.
+The When2Tool adapter pins the public Hugging Face dataset revision and the official GitHub runner commit. The cloud runner bootstraps that exact upstream revision instead of silently copying or modifying its code.
 
-### Black-box model adapter
-Call a model API, expose a constrained tool registry, and log observable behavior: prompts, outputs, calls, latency, token usage, and tool results. Never claim hidden-state access in this mode.
-
-### White-box model adapter
-Run a pinned open-weight model locally or on an authorized GPU host. Capture the exact hidden-state locations required by the target paper. Store model revision, tokenizer, chat template, layer, token position, dtype, and extraction code.
-
-### Evaluation layer
-Compute task success, unnecessary calls, missed necessary calls, calibration metrics, cost per successful task, latency, and utility regret. Use task-cluster bootstrap intervals for aggregate results.
+- The official five-step pipeline reproduces the upstream baseline, hard-no-tool labels, hidden-state extraction, linear probe, Probe&Prefill, and figures.
+- The repeated-trial runner is an N2A extension. It collects multiple hard-no-tool and forced-tool attempts at a declared temperature.
+- When the label definition changes from one-run failure to repeated-run failure, P5 is retrained against the repeated-run labels. The original probe is not evaluated against a different target.
 
 ## Evidence modes
 
 - SYNTHETIC_DEMO: hand-authored examples; teaching only.
-- BLACK_BOX_RUN: real model API behavior; no hidden-state claims.
+- P31_OFFICIAL_REPRODUCTION: protocol-aligned execution of the pinned When2Tool pipeline.
+- N2A_REPEATED_TRIAL_EXTENSION: repeated no-tool/forced-tool runs with a declared label rule.
+- BLACK_BOX_RUN: observable API behavior only; no hidden-state claims.
 - WHITE_BOX_RUN: open-weight model with documented internal activation access.
-- PAPER_REPRODUCTION: protocol-matched reproduction with pinned artifacts and raw logs.
 
-Each run must carry exactly one evidence mode. Never mix synthetic results with benchmark results in the same aggregate table.
+A successful import, passing tests, or a pilot is not a reproduction. Every empirical run must preserve immutable source pins, model revision, tokenizer/chat template, prompt, decoding settings, trial count, task IDs, raw outputs, tool traces, evaluator version, and cost schedule.

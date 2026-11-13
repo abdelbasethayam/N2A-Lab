@@ -30,6 +30,19 @@ python -m n2a.cli audit-when2tool --output-dir data/when2tool
 
 The adapter pins the Hugging Face dataset revision and the official upstream runner commit. Public task rows do not contain model-specific necessity labels; collect those by evaluating a model in hard-no-tool mode. See [When2Tool reproduction protocol](docs/WHEN2TOOL_REPRODUCTION.md).
 
+After collecting official model outputs, derive labels and evaluate decisions:
+
+```bash
+python -m n2a.cli derive-labels --no-tool-outputs artifacts/when2tool/probe_data/qwen3-4b-instruct/test_no_tool_outputs.json --label-rule single_failure --output artifacts/when2tool/test_necessity_labels.json
+python -m n2a.cli evaluate-outputs --outputs artifacts/when2tool/outputs/qwen3-4b-instruct/current__no_reasoning.json --labels artifacts/when2tool/test_necessity_labels.json --cost-per-call 0.01 --risk-per-call 0.00 --output artifacts/when2tool/current_behavior_metrics.json
+```
+
+For a P0–P6 comparison, prepare one row per task with the model-derived necessity label and the required signals (no-tool success probability, verbalized necessity, probe probability, expected success with/without tool, tool cost, risk, and uncertainty), then run:
+
+```bash
+python -m n2a.cli policy-suite --records artifacts/when2tool/policy_signals_test.json --output artifacts/when2tool/p0_p6_comparison.json
+```
+
 ## Run a cloud GPU pilot
 
 On a Linux NVIDIA GPU runtime:

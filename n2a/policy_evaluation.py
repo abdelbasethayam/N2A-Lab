@@ -50,10 +50,6 @@ def evaluate_policy_suite(
             probability_values = [
                 1.0 - float(context.no_tool_success_probability) for context in contexts
             ]
-        elif policy_id == "P3":
-            probability_values = [
-                float(context.verbalized_necessity_probability) for context in contexts
-            ]
         elif policy_id == "P5":
             probability_values = [
                 float(context.probe_necessity_probability) for context in contexts

@@ -9,7 +9,7 @@ from n2a.benchmarks.when2tool import audit_when2tool, prepare_when2tool
 from n2a.evaluation import evaluate_outputs
 from n2a.necessity import derive_necessity_labels
 from n2a.policy_evaluation import evaluate_policy_suite
-from n2a.policies import PolicyConfig
+from n2a.policies import POLICY_NAMES, PolicyConfig
 from n2a.probes import export_probe_records
 
 
@@ -53,6 +53,7 @@ def main():
     suite.add_argument("--surface-threshold", type=float, default=0.5)
     suite.add_argument("--probe-threshold", type=float, default=0.5)
     suite.add_argument("--uncertainty-aversion", type=float, default=0.0)
+    suite.add_argument("--policies", nargs="+", choices=list(POLICY_NAMES), default=list(POLICY_NAMES))
 
     probe = commands.add_parser("probe-signals", help="Export per-task P5 probabilities from official probe artifacts.")
     probe.add_argument("--hidden", required=True)
@@ -99,7 +100,8 @@ def main():
             "output": str(Path(args.output).resolve()),
         }, indent=2))
     elif args.command == "policy-suite":
-        records = _read_json(args.records)
+        records_payload = _read_json(args.records)
+        records = records_payload.get("records", records_payload) if isinstance(records_payload, dict) else records_payload
         config = PolicyConfig(
             necessity_threshold=args.necessity_threshold,
             verbalized_threshold=args.verbalized_threshold,
@@ -107,7 +109,7 @@ def main():
             probe_threshold=args.probe_threshold,
             uncertainty_aversion=args.uncertainty_aversion,
         )
-        result = evaluate_policy_suite(records, config=config)
+        result = evaluate_policy_suite(records, config=config, policies=tuple(args.policies))
         _write_json(args.output, result)
         print(json.dumps({
             "n_records": result["n_records"],

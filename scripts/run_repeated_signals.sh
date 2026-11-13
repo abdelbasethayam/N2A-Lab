@@ -27,6 +27,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+MODEL_KEY="$(basename "$MODEL")"
+
 if [[ "$SPLIT" != "train" && "$SPLIT" != "test" ]]; then
   echo "ERROR: --split must be train or test." >&2
   exit 2

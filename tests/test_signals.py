@@ -8,15 +8,27 @@ def test_verbalized_necessity_parser_distinguishes_cannot_from_can():
     assert parse_verbalized_necessity("Let me think about the problem.")["score"] is None
 
 
-def test_signal_builder_joins_matched_model_evidence():
-    no_tool = [
-        {"id": 1, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
-        {"id": 2, "expected": {"answer": "42"}, "final_response": r"\boxed{wrong}"},
-    ]
-    force_tool = [
-        {"id": 1, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
-        {"id": 2, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
-    ]
+def test_signal_builder_joins_matched_model_evidence_and_supports_p0_to_p6():
+    no_tool = {
+        "run_0": [
+            {"id": 1, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
+            {"id": 2, "expected": {"answer": "42"}, "final_response": r"\boxed{wrong}"},
+        ],
+        "run_1": [
+            {"id": 1, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
+            {"id": 2, "expected": {"answer": "42"}, "final_response": r"\boxed{wrong}"},
+        ],
+    }
+    force_tool = {
+        "run_0": [
+            {"id": 1, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
+            {"id": 2, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
+        ],
+        "run_1": [
+            {"id": 1, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
+            {"id": 2, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"},
+        ],
+    }
     reasoning = [
         {"id": 1, "trace": [{"model_raw_output": "I can solve this directly without using a tool."}]},
         {"id": 2, "trace": [{"model_raw_output": "I need to use a tool for this question."}]},
@@ -29,6 +41,7 @@ def test_signal_builder_joins_matched_model_evidence():
     }
     result = build_policy_signal_records(
         no_tool,
+        label_rule="any_failure",
         force_tool_payload=force_tool,
         reasoning_payload=reasoning,
         probe_payload=probes,
@@ -43,3 +56,14 @@ def test_signal_builder_joins_matched_model_evidence():
     suite = evaluate_policy_suite(result["records"])
     assert set(suite["policies"]) == {"P0", "P1", "P2", "P3", "P4", "P5", "P6"}
     assert all(item["n_evaluated"] == 2 for item in suite["policies"].values())
+
+
+def test_single_no_tool_trial_is_not_misrepresented_as_probability():
+    no_tool = [
+        {"id": 1, "expected": {"answer": "42"}, "final_response": r"\boxed{42}"}
+    ]
+    result = build_policy_signal_records(no_tool, label_rule="single_failure")
+    row = result["records"][0]
+    assert row["no_tool_success_observed"] == 1.0
+    assert row["no_tool_success_probability"] is None
+    assert row["expected_no_tool_success"] is None

@@ -83,6 +83,40 @@ These rules are not interchangeable. Always record the chosen rule and number of
 
 Thresholds and costs must be selected on training/validation data or preregistered. Do not tune them on the locked test split.
 
+## Build per-task N2A signals
+
+After the official pipeline has produced its model outputs and probe artifacts, export P5 probabilities:
+
+```bash
+python -m n2a.cli probe-signals \
+  --hidden artifacts/when2tool/probe_data/qwen3-4b-instruct/test_hidden_no_reasoning.pt \
+  --probe artifacts/when2tool/probe_data/qwen3-4b-instruct/probe_no_reasoning.pt \
+  --labels artifacts/when2tool/probe_data/qwen3-4b-instruct/test_labels_no_reasoning.json \
+  --output artifacts/when2tool/p5_probe_signals_test.json
+```
+
+Join matched no-tool, forced-tool, reasoning, and probe evidence:
+
+```bash
+python -m n2a.cli build-signals \
+  --no-tool-outputs artifacts/when2tool/probe_data/qwen3-4b-instruct/test_no_tool_outputs.json \
+  --force-tool-outputs artifacts/when2tool/outputs/qwen3-4b-instruct/force_tool__no_reasoning.json \
+  --reasoning-outputs artifacts/when2tool/outputs/qwen3-4b-instruct/current__reasoning.json \
+  --probe-records artifacts/when2tool/p5_probe_signals_test.json \
+  --tool-cost 0.01 --risk-penalty 0.00 \
+  --output artifacts/when2tool/n2a_policy_signals_test.json
+```
+
+Then compare the policies:
+
+```bash
+python -m n2a.cli policy-suite \
+  --records artifacts/when2tool/n2a_policy_signals_test.json \
+  --output artifacts/when2tool/p0_p6_comparison_test.json
+```
+
+The signal join deliberately does not expose a one-run 0/1 no-tool outcome as a probability. P2 and P6 are excluded until at least two matched no-tool trials are available; P6 also requires at least two forced-tool trials. P3 is a categorical parse of explicit verbalized necessity, not a calibrated probability. The suite reports the eligible sample count separately for every policy.
+
 ## Metrics
 
 The implementation reports action accuracy, precision, recall, F1, MCC, over-calling and missed-necessity rates, Brier score and ECE when probabilities are available, task success, tool calls, tool cost, risk cost, latency cost, net utility, and cost per success.

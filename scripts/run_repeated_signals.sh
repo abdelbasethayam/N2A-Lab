@@ -15,8 +15,9 @@ while [[ $# -gt 0 ]]; do
     --runs) RUNS="$2"; shift 2 ;;
     --max-samples) MAX_SAMPLES="$2"; shift 2 ;;
     --temperature) TEMPERATURE="$2"; shift 2 ;;
+    --max-model-len) MAX_MODEL_LEN="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--model qwen3-4b-instruct] [--split train|test] [--runs 10] [--max-samples 100]"
+      echo "Usage: $0 [--model qwen3-4b-instruct] [--split train|test] [--runs 10] [--max-samples 100] [--max-model-len 32768]"
       exit 0
       ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
@@ -63,7 +64,7 @@ python "\${ROOT_DIR}/scripts/run_repeated_no_tool.py" \
   --max-samples "\${MAX_SAMPLES}" \
   --temperature "\${TEMPERATURE}" \
   --tensor-parallel-size 1 \
-  --max-model-len 8192
+  --max-model-len "$MAX_MODEL_LEN"
 
 python "\${UPSTREAM_DIR}/src/run_eval.py" \
   --model_path "\${MODEL}" \

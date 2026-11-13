@@ -77,7 +77,7 @@ Run the official five-step single-hop pipeline with:
 bash scripts/run_when2tool.sh --model qwen3-4b-instruct --full
 \`\`\`
 
-The pilot runs a 100-task slice across the official prompt modes. The full pipeline performs baseline evaluation, hard-no-tool labels and hidden-state extraction, linear-probe training, Probe&Prefill evaluation, and figure generation. Preserve all raw outputs and run metadata.
+The pilot runs a 100-task slice across the official prompt modes. The full pipeline performs baseline evaluation, hard-no-tool labels and hidden-state extraction, linear-probe training, Probe&Prefill evaluation, and figure generation. The runner resolves the model alias to an immutable Hugging Face commit and records it in `artifacts/when2tool/model_manifest.json`; pass `--revision HF_COMMIT_SHA` to pin a specific model revision. Preserve all raw outputs and run metadata.
 
 ## Repeated-trial N2A extension
 

@@ -7,7 +7,7 @@ N2A Lab pins two separate artifacts:
 - Official runner: \`Trustworthy-ML-Lab/when2tool\` at commit \`ef0cf1ea72eb8acdfd3fb1251c4b6a9a0131a23e\`.
 - Dataset: \`cesun/When2Tool\` at revision \`153066c0285887915fc6b530c9af2987a2c859ac\`.
 
-Do not silently update either pin. A pin update requires a new audit, a changelog entry, and regenerated manifests.
+Do not silently update either pin. A pin update requires a new audit, a changelog entry, and regenerated manifests. Before each GPU run, N2A resolves the model alias to an immutable Hugging Face commit, downloads that snapshot, and writes `artifacts/when2tool/model_manifest.json`. You may pass `--revision HF_COMMIT_SHA` to either runner to select a specific model revision.
 
 ## Dataset structure
 

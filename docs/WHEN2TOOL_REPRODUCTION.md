@@ -115,7 +115,58 @@ python -m n2a.cli policy-suite \
   --output artifacts/when2tool/p0_p6_comparison_test.json
 ```
 
-The signal join deliberately does not expose a one-run 0/1 no-tool outcome as a probability. P2 and P6 are excluded until at least two matched no-tool trials are available; P6 also requires at least two forced-tool trials. P3 is a categorical parse of explicit verbalized necessity, not a calibrated probability. The suite reports the eligible sample count separately for every policy.
+The signal join deliberately does not expose a one-run 0/1 no-tool outcome as a probability. In the original P31 track, P2 and P6 are therefore excluded; compare P0/P1/P3/P4/P5 against the original one-run labels.
+
+## Repeated-trial N2A extension
+
+To estimate model-relative no-tool success probabilities and expected tool benefit, collect matched repeated trials on both train and test splits:
+
+```bash
+bash scripts/run_repeated_signals.sh --model qwen3-4b-instruct --split train --runs 10
+bash scripts/run_repeated_signals.sh --model qwen3-4b-instruct --split test --runs 10
+```
+
+This uses hard-no-tool evaluation for no-tool trials and the official force-tool prompt for the tool-enabled condition. The temperature defaults to 0.7. It is an N2A repeated-trial extension, not the original P31 one-run protocol.
+
+Train a new P5 probe on repeated-run labels so the probe target matches the repeated-run policy labels:
+
+```bash
+python -m n2a.cli train-repeated-probe \
+  --train-hidden artifacts/when2tool/probe_data/qwen3-4b-instruct/train_hidden_no_reasoning.pt \
+  --train-metadata artifacts/when2tool/probe_data/qwen3-4b-instruct/train_labels_no_reasoning.json \
+  --train-no-tool-outputs artifacts/when2tool/repeated/qwen3-4b-instruct_train_hard_no_tool_10runs.json \
+  --test-hidden artifacts/when2tool/probe_data/qwen3-4b-instruct/test_hidden_no_reasoning.pt \
+  --test-metadata artifacts/when2tool/probe_data/qwen3-4b-instruct/test_labels_no_reasoning.json \
+  --test-no-tool-outputs artifacts/when2tool/repeated/qwen3-4b-instruct_test_hard_no_tool_10runs.json \
+  --label-rule any_failure \
+  --output-dir artifacts/when2tool/probe_data/qwen3-4b-instruct_repeated
+```
+
+Build the matched test signal table from the repeated outcomes, the repeated-label probe, and the reasoning-mode self-report:
+
+```bash
+python -m n2a.cli build-signals \
+  --no-tool-outputs artifacts/when2tool/repeated/qwen3-4b-instruct_test_hard_no_tool_10runs.json \
+  --label-rule any_failure \
+  --force-tool-outputs artifacts/when2tool/repeated/qwen3-4b-instruct_test_force_tool_10runs.json \
+  --reasoning-outputs artifacts/when2tool/outputs/qwen3-4b-instruct/current__reasoning.json \
+  --probe-records artifacts/when2tool/probe_data/qwen3-4b-instruct_repeated/test_repeated_probe_signals.json \
+  --tool-cost 0.01 --risk-penalty 0.00 \
+  --output artifacts/when2tool/n2a_repeated_policy_signals_test.json
+```
+
+Finally, compare all seven policies using predeclared thresholds and utility weights:
+
+```bash
+python -m n2a.cli policy-suite \
+  --records artifacts/when2tool/n2a_repeated_policy_signals_test.json \
+  --necessity-threshold 0.5 \
+  --probe-threshold 0.5 \
+  --uncertainty-aversion 0.0 \
+  --output artifacts/when2tool/p0_p6_repeated_comparison_test.json
+```
+
+The repeated-label probe is intentionally retrained using the same repeated-trial label rule; the original one-run probe must not be evaluated against a different target definition. The suite reports eligible sample counts separately for each policy. P3 is a categorical parse of explicit verbalized necessity, not a calibrated probability. The example cost value is illustrative and must be replaced or preregistered for a real utility study.
 
 ## Metrics
 

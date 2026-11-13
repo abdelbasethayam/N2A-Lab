@@ -88,7 +88,7 @@ def run_policy(
     config.validate()
 
     p0 = scenario.p_no_tool_success
-    p1 = p0 + (scenario.p_with_tool_success - p0) * config.tool_reliability
+    p1 = scenario.p_with_tool_success * config.tool_reliability
     expected_gain = p1 - p0
     estimated_net_utility = (
         expected_gain * config.value_per_success
@@ -124,7 +124,7 @@ def run_policy(
     if call:
         # Same seed and scenario => matched tool outcome across compared policies.
         draw = random.Random(f"{config.seed}:{scenario.scenario_id}").random()
-        tool_succeeded = draw < config.tool_reliability
+        tool_succeeded = draw < p1
         if tool_succeeded:
             answer = scenario.tool_fn()
             trace.append({

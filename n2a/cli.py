@@ -11,6 +11,7 @@ from n2a.necessity import derive_necessity_labels
 from n2a.policy_evaluation import evaluate_policy_suite
 from n2a.policies import POLICY_NAMES, PolicyConfig
 from n2a.probes import export_probe_records
+from n2a.signals import build_policy_signal_records
 
 
 def _read_json(path: str):
@@ -61,6 +62,17 @@ def main():
     probe.add_argument("--labels", required=True)
     probe.add_argument("--temperature", type=float, default=1.0)
     probe.add_argument("--output", required=True)
+
+    signals = commands.add_parser("build-signals", help="Join no-tool, forced-tool, reasoning, and probe evidence into P0-P6 inputs.")
+    signals.add_argument("--no-tool-outputs", required=True)
+    signals.add_argument("--label-rule", choices=["single_failure", "any_failure", "majority_failure"], default="single_failure")
+    signals.add_argument("--force-tool-outputs", default=None)
+    signals.add_argument("--reasoning-outputs", default=None)
+    signals.add_argument("--probe-records", default=None)
+    signals.add_argument("--tool-cost", type=float, default=0.0)
+    signals.add_argument("--risk-penalty", type=float, default=0.0)
+    signals.add_argument("--value-of-success", type=float, default=1.0)
+    signals.add_argument("--output", required=True)
 
     args = parser.parse_args()
 
@@ -127,6 +139,27 @@ def main():
         print(json.dumps({
             "n_records": result["n_records"],
             "signal_name": result["signal_name"],
+            "output": str(Path(args.output).resolve()),
+        }, indent=2))
+    elif args.command == "build-signals":
+        no_tool = _read_json(args.no_tool_outputs)
+        force_tool = _read_json(args.force_tool_outputs) if args.force_tool_outputs else None
+        reasoning = _read_json(args.reasoning_outputs) if args.reasoning_outputs else None
+        probe_records = _read_json(args.probe_records) if args.probe_records else None
+        result = build_policy_signal_records(
+            no_tool,
+            label_rule=args.label_rule,
+            force_tool_payload=force_tool,
+            reasoning_payload=reasoning,
+            probe_payload=probe_records,
+            tool_cost=args.tool_cost,
+            risk_penalty=args.risk_penalty,
+            value_of_success=args.value_of_success,
+        )
+        _write_json(args.output, result)
+        print(json.dumps({
+            "n_records": result["n_records"],
+            "source_run_counts": result["source_run_counts"],
             "output": str(Path(args.output).resolve()),
         }, indent=2))
 

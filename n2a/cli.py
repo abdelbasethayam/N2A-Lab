@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from n2a.benchmarks.when2tool import audit_when2tool, prepare_when2tool
+from n2a.calibration import calibrate_threshold
 from n2a.evaluation import evaluate_outputs
 from n2a.necessity import derive_necessity_labels
 from n2a.policy_evaluation import evaluate_policy_suite
@@ -85,6 +86,12 @@ def main():
     retrain.add_argument("--reg", type=float, default=10000.0)
     retrain.add_argument("--layer", default="all")
     retrain.add_argument("--output-dir", required=True)
+
+    calibrate = commands.add_parser("calibrate-threshold", help="Select a score threshold using training/validation records only.")
+    calibrate.add_argument("--records", required=True)
+    calibrate.add_argument("--policy", choices=["P2", "P3", "P4", "P5"], required=True)
+    calibrate.add_argument("--metric", choices=["f1", "balanced_accuracy", "mcc"], default="f1")
+    calibrate.add_argument("--output", required=True)
 
     args = parser.parse_args()
 
@@ -188,6 +195,22 @@ def main():
             layer=args.layer,
         )
         print(json.dumps(result, indent=2))
+    elif args.command == "calibrate-threshold":
+        payload = _read_json(args.records)
+        records = payload.get("records", payload) if isinstance(payload, dict) else payload
+        result = calibrate_threshold(
+            records,
+            policy_id=args.policy,
+            metric=args.metric,
+        )
+        _write_json(args.output, result)
+        print(json.dumps({
+            "policy_id": result["policy_id"],
+            "selected_threshold": result["selected_threshold"],
+            "selection_metric": result["selection_metric"],
+            "n_eligible_validation_records": result["n_eligible_validation_records"],
+            "output": str(Path(args.output).resolve()),
+        }, indent=2))
 
 
 if __name__ == "__main__":

@@ -67,3 +67,21 @@ def test_single_no_tool_trial_is_not_misrepresented_as_probability():
     assert row["no_tool_success_observed"] == 1.0
     assert row["no_tool_success_probability"] is None
     assert row["expected_no_tool_success"] is None
+
+
+def test_policy_suite_reports_missing_probability_evidence_without_imputation():
+    from n2a.policy_evaluation import evaluate_policy_suite
+
+    records = [{
+        "task_id": "single",
+        "necessity_label": 0,
+        "difficulty": "easy",
+        "no_tool_success_probability": None,
+        "expected_no_tool_success": None,
+        "expected_with_tool_success": None,
+        "probe_necessity_probability": 0.1,
+    }]
+    result = evaluate_policy_suite(records)
+    assert result["policies"]["P2"]["status"] == "NO_ELIGIBLE_RECORDS"
+    assert result["policies"]["P6"]["status"] == "NO_ELIGIBLE_RECORDS"
+    assert result["policies"]["P5"]["n_evaluated"] == 1

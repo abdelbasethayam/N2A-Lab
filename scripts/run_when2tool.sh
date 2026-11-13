@@ -6,6 +6,7 @@ MODEL="qwen3-4b-instruct"
 MODE="pilot"
 PILOT_N=100
 STEPS="1-5"
+MODEL_REVISION=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -16,8 +17,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --full) MODE="full"; shift ;;
     --steps) STEPS="$2"; shift 2 ;;
+    --revision) MODEL_REVISION="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--model qwen3-4b-instruct] [--pilot 100 | --full] [--steps 1-5]"
+      echo "Usage: $0 [--model qwen3-4b-instruct] [--pilot 100 | --full] [--steps 1-5] [--revision HF_COMMIT_SHA]"
       exit 0
       ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;

@@ -11,40 +11,80 @@ from n2a.policies import DecisionContext, POLICY_NAMES, PolicyConfig, decide
 CONTEXT_FIELDS = set(DecisionContext.__dataclass_fields__)
 
 
+def _missing_signal_fields(policy_id: str, context: DecisionContext) -> list[str]:
+    if policy_id in ("P0", "P1"):
+        return []
+    if policy_id == "P2":
+        return [] if context.no_tool_success_probability is not None else ["no_tool_success_probability"]
+    if policy_id == "P3":
+        return [] if context.verbalized_necessity_score is not None else ["verbalized_necessity_score"]
+    if policy_id == "P4":
+        if context.surface_necessity_score is not None:
+            return []
+        return [] if context.difficulty in ("easy", "medium", "hard") else ["difficulty_or_surface_necessity_score"]
+    if policy_id == "P5":
+        return [] if context.probe_necessity_probability is not None else ["probe_necessity_probability"]
+    if policy_id == "P6":
+        missing = []
+        if context.expected_no_tool_success is None:
+            missing.append("expected_no_tool_success")
+        if context.expected_with_tool_success is None:
+            missing.append("expected_with_tool_success")
+        return missing
+    raise ValueError(f"Unknown policy: {policy_id}")
+
+
 def evaluate_policy_suite(
     records: list[dict[str, Any]],
     *,
     config: PolicyConfig = PolicyConfig(),
     policies: tuple[str, ...] = tuple(POLICY_NAMES),
 ) -> dict[str, Any]:
-    """Evaluate policies against supplied model-relative labels.
+    """Evaluate each policy only on records with its required input signals.
 
-    Each record must contain necessity_label and the signal fields required by
-    the selected policies. The caller is responsible for ensuring all learned
-    signals and thresholds were produced without test-set leakage.
+    Each record must contain necessity_label. Missing policy-specific signals
+    are reported and excluded for that policy, rather than silently imputed.
     """
     if not records:
         raise ValueError("At least one record is required.")
-    labels = []
-    contexts = []
+    if not policies:
+        raise ValueError("At least one policy must be selected.")
+    unknown = set(policies).difference(POLICY_NAMES)
+    if unknown:
+        raise ValueError(f"Unknown policies: {sorted(unknown)}")
+
+    prepared = []
     for index, record in enumerate(records):
         if "necessity_label" not in record:
             raise ValueError(f"Record {index} is missing necessity_label.")
         label = int(record["necessity_label"])
         if label not in (0, 1):
             raise ValueError(f"Record {index} has a non-binary necessity_label.")
-        labels.append(label)
         payload = {key: value for key, value in record.items() if key in CONTEXT_FIELDS}
         if "task_id" not in payload:
             payload["task_id"] = record.get("task_id", record.get("id", index))
-        contexts.append(DecisionContext(**payload))
+        prepared.append((label, DecisionContext(**payload)))
 
     suite = {}
     for policy_id in policies:
+        available = []
+        excluded = []
+        for label, context in prepared:
+            missing = _missing_signal_fields(policy_id, context)
+            if missing:
+                excluded.append({"task_id": context.task_id, "missing": missing})
+            else:
+                available.append((label, context))
+
+        if not available:
+            raise ValueError(f"No records contain the required signals for {policy_id}.")
+
+        labels = [label for label, _ in available]
+        contexts = [context for _, context in available]
         decisions = [decide(policy_id, context, config) for context in contexts]
         actions = [int(item["tool_called"]) for item in decisions]
 
-        # Only actual probability estimates are passed to proper scoring rules.
+        # Only probability estimates with a probabilistic interpretation are scored.
         probability_values = None
         if policy_id == "P2":
             probability_values = [
@@ -68,6 +108,9 @@ def evaluate_policy_suite(
 
         suite[policy_id] = {
             "policy_name": POLICY_NAMES[policy_id],
+            "n_evaluated": len(available),
+            "n_excluded_missing_signal": len(excluded),
+            "excluded_records": excluded,
             "decision_metrics": metrics,
             "mean_estimated_utility": (
                 sum(estimated_utilities) / len(estimated_utilities)
@@ -84,7 +127,8 @@ def evaluate_policy_suite(
         "policies": suite,
         "evidence_status": "MODEL_DERIVED_SIGNALS_REQUIRED",
         "leakage_warning": (
-            "P2 thresholds, P3/P5 signals, and any learned P4 surface score must be "
-            "fixed using training/validation data or preregistration before test evaluation."
+            "P2/P3/P5 signals, P4 surface scores, and P6 outcome estimates must be "
+            "fixed using training/validation data or preregistration before test evaluation. "
+            "Policies are compared on their eligible records; inspect n_evaluated per policy."
         ),
     }

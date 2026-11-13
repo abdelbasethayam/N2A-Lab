@@ -74,10 +74,10 @@ def decide(policy_id: str, context: DecisionContext, config: PolicyConfig = Poli
         score = 1.0 - p0
     elif policy_id == "P3":
         score = _probability(
-            context.verbalized_necessity_probability, "verbalized_necessity_probability"
+            context.verbalized_necessity_score, "verbalized_necessity_score"
         )
         call = score >= config.verbalized_threshold
-        reason = f"Verbalized necessity={score:.3f}; threshold={config.verbalized_threshold:.3f}."
+        reason = f"Parsed verbalized-necessity score={score:.3f}; threshold={config.verbalized_threshold:.3f}. This is a categorical self-report score, not a calibrated probability."
     elif policy_id == "P4":
         if context.surface_necessity_score is not None:
             score = _probability(context.surface_necessity_score, "surface_necessity_score")

@@ -24,3 +24,5 @@ jobs:
         run: python -m compileall -q app.py n2a tests
       - name: Run unit tests
         run: python -m pytest -q
+      - name: Audit pinned When2Tool dataset
+        run: python -m n2a.cli audit-when2tool --output-dir /tmp/when2tool-audit
